@@ -3,6 +3,7 @@ const fetch = require('node-fetch');
 const aesjs = require('aes-js');
 const PDFDocument = require('pdf-lib').PDFDocument;
 const fs = require('fs');
+const sanitize = require("sanitize-filename");
 // const md5 = require('md5');
 
 
@@ -108,19 +109,44 @@ async function downloadAndDecryptFile(url) {
 (async () => {
     //
 
-    let bookId = prompt("Input book id:");
+    let user = await fetch("https://www.bsmart.it/api/v5/user", {headers: {cookie:'_bsw_session_v1_production='+prompt('Input "_bsw_session_v1_production" cookie:')}});
 
-    let headers = {"auth_token": prompt("Input auth_token:")};
+    if (user.status != 200) {
+        console.log("Bad cookie");
+        return;
+    }
 
-    console.log("Gathering information");
+    user = await user.json();
 
-    let title = await fetch(`https://www.bsmart.it/api/v6/books/by_book_id/${bookId}`, {method: "GET",headers}).then(res => res.json()).then(j => j.title);
+    let headers = {"auth_token": user.auth_token};
+
+    let books = await fetch(`https://www.bsmart.it/api/v6/books?page_thumb_size=medium&per_page=25000`, {headers}).then(res => res.json());
+
+    if (books.length == 0) {
+        console.log('No books in your library!');
+    } else {
+        console.log("Book list:");
+        books.forEach((b) => {
+            console.log(`${b.id}) ${b.title}`);
+        });
+        
+    }
+    let bookId = prompt(`Please input book id${(books.length == 0 ? " manually" : "")}:`);
+
+    let book = await fetch(`https://www.bsmart.it/api/v6/books/by_book_id/${bookId}`, {headers});
+
+    if (book.status != 200) {
+        console.log("Invalid book id");
+        return;
+    }
+
+    book = await book.json();
 
     let info = [];
     let page = 1;
     while (true) {
-        console.log(page);
-        let tempInfo = await fetch(`https://api.bsmart.it/api/v5/books/${bookId}/1/resources?per_page=500&page=${page}`, {method: "GET",headers}).then(res => res.json());
+        //console.log(page);
+        let tempInfo = await fetch(`https://api.bsmart.it/api/v5/books/${book.id}/${book.current_edition.revision}/resources?per_page=500&page=${page}`, {headers}).then(res => res.json());
         info = info.concat(tempInfo);
         if (tempInfo.length < 500) break;
         page++;
@@ -152,7 +178,7 @@ async function downloadAndDecryptFile(url) {
 
     //fs.writeFile(prompt("Input file name:") + ".pdf", await outputPdf.save(), (e)=>{});
 
-    fs.writeFile(title + ".pdf", await outputPdf.save(), (e)=>{});
+    fs.writeFile(sanitize(book.id + " - " + book.title + ".pdf"), await outputPdf.save(), (e)=>{});
 
     console.log("Saving . . .");
 
