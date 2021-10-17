@@ -14,8 +14,8 @@ Download your books from bSmart as offline pdf
 
 1. Open a terminal window in the folder where you extracted the repo
 2. Run `node index.js`
-3. Input the id of the book you'd like to download, this is located in the url, after `/books/`, and it's ususally a 4 digit number
-4. Input the `auth_token`, this can be obtained by using the inspector tools, in the network pannel, filtering by `fetch/XHR`, selecting one of the last request made by the site and looking into the request header section for a header with the same name
+3. Open the dev tools (F12) and go to the storage(Firefox) or application(Chromium) tab, there click on `Cookie`, then `https://my.bsmart.it`, then copy in the terminal the cookie called `_bsw_session_v1_production`
+4. Input the id of the book you'd like to download, either from the list or from the url, after `/books/`. It's ususally a 4 digit number
 5. Press enter and the script will start working, a file will be saved in the same folder as the one with the `index.js` with the name of the book, containing the full book downloaded.
 
 NOTE: some times this doesn't work flawlessly, i've tryed to fix all the issues I've had but in some cases you might need to do a manual download and merge, for this I've left some commented code for the techys.
