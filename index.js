@@ -1,5 +1,6 @@
 const prompt = require('prompt-sync')({sigint: true});
 const fetch = require('node-fetch');
+const msgpack = require('msgpack-lite');
 const aesjs = require('aes-js');
 const PDFDocument = require('pdf-lib').PDFDocument;
 const fs = require('fs');
@@ -17,13 +18,11 @@ async function downloadAndDecryptFile(url) {
         //console.log(file);
 
         try {
-            let start = file.indexOf("start")+6;
-            let startEnd = file.indexOf("path", start)-1;
+            let header = msgpack.decode(file.slice(0, 256));
+            console.log(header);
 
-            let startPosition = file.slice(start, startEnd).reverse().reduce((a,c,i) => a+c*Math.pow(256,i));
-
-            let firstPart = file.slice(256, startPosition);
-            let secondPart = new Uint8Array(file.slice(startPosition));
+            let firstPart = file.slice(256, header.start);
+            let secondPart = new Uint8Array(file.slice(header.start));
 
             var aesCbc = new aesjs.ModeOfOperation.cbc(key, firstPart.slice(0, 16));
             var decryptedFirstPart = aesCbc.decrypt(firstPart.slice(16));
