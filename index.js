@@ -28,68 +28,11 @@ async function downloadAndDecryptFile(url) {
             var decryptedFirstPart = aesCbc.decrypt(firstPart.slice(16));
 
             // this mess is to fix what i belive to be a bug in the aes js module
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-16).every(e=>e==16)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-16);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-15).every(e=>e==15)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-15);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-14).every(e=>e==14)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-14);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-13).every(e=>e==13)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-13);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-12).every(e=>e==12)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-12);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-11).every(e=>e==11)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-11);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-10).every(e=>e==10)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-10);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-9).every(e=>e==9)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-9);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-8).every(e=>e==8)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-8);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-7).every(e=>e==7)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-7);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-6).every(e=>e==6)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-6);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-5).every(e=>e==5)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-5);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-4).every(e=>e==4)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-4);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-3).every(e=>e==3)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-3);
-            }
-
-            if (decryptedFirstPart.slice(decryptedFirstPart.length-2).every(e=>e==2)) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-2);
-            }
-
-            if (decryptedFirstPart[decryptedFirstPart.length-1] == 1) {
-                decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-1);
+            for(let i=16;i>0;i--){
+                if (decryptedFirstPart.slice(decryptedFirstPart.length-i).every(e=>e==i)) {
+                    decryptedFirstPart = decryptedFirstPart.slice(0, decryptedFirstPart.length-i);
+                    break;
+                }
             }
 
             let result = new Uint8Array(decryptedFirstPart.length + secondPart.length);
@@ -106,7 +49,6 @@ async function downloadAndDecryptFile(url) {
 }
 
 (async () => {
-    //
 
     let user = await fetch("https://www.bsmart.it/api/v5/user", {headers: {cookie:'_bsw_session_v1_production='+prompt('Input "_bsw_session_v1_production" cookie:')}});
 
@@ -125,14 +67,15 @@ async function downloadAndDecryptFile(url) {
         console.log('No books in your library!');
     } else {
         console.log("Book list:");
+        let i=0;
         books.forEach((b) => {
-            console.log(`${b.id}) ${b.title}`);
+            console.log(`${i++} ${b.title}`);
         });
         
     }
     let bookId = prompt(`Please input book id${(books.length == 0 ? " manually" : "")}:`);
 
-    let book = await fetch(`https://www.bsmart.it/api/v6/books/by_book_id/${bookId}`, {headers});
+    let book = await fetch(`https://www.bsmart.it/api/v6/books/by_book_id/${books[bookId].id}`, {headers});
 
     if (book.status != 200) {
         console.log("Invalid book id");
