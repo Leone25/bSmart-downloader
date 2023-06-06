@@ -63,14 +63,12 @@ async function downloadAndDecryptFile(url) {
     } else {
         console.log("Book list:");
         let i=0;
-        books.forEach((b) => {
-            console.log(`${i++} ${b.title}`);
-        });
-        
+        console.table(books.map(book => ({ id: book.id, title: book.title })))
     }
+    
     let bookId = prompt(`Please input book id${(books.length == 0 ? " manually" : "")}:`);
 
-    let book = await fetch(`https://www.bsmart.it/api/v6/books/by_book_id/${books[bookId].id}`, {headers});
+    let book = await fetch(`https://www.bsmart.it/api/v6/books/by_book_id/${bookId}`, {headers});
 
     if (book.status != 200) {
         console.log("Invalid book id");
