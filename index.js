@@ -15,7 +15,6 @@ async function downloadAndDecryptFile(url) {
 
         try {
             let header = msgpack.decode(file.slice(0, 256));
-            console.log(header);
 
             let firstPart = file.slice(256, header.start);
             let secondPart = new Uint8Array(file.slice(header.start));
