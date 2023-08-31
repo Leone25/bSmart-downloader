@@ -15,6 +15,7 @@
     "node-fetch": "^2.6.1",
     "pdf-lib": "^1.16.0",
     "prompt-sync": "^4.2.0",
-    "sanitize-filename": "^1.6.3"
+    "sanitize-filename": "^1.6.3",
+    "yargs": "^17.7.2"
   }
 }

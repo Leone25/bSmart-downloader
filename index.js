@@ -5,6 +5,49 @@ const aesjs = require('aes-js');
 const PDFDocument = require('pdf-lib').PDFDocument;
 const fs = require('fs');
 const sanitize = require("sanitize-filename");
+const yargs = require('yargs/yargs');
+const md5 = require('md5');
+const { spawn } = require('child_process');
+
+const argv = yargs(process.argv.slice(2))
+    .option('cookie', {
+        describe: 'Input "_bsw_session_v1_production" cookie',
+        type: 'string',
+        default: null
+    })
+    .option('book-id', {
+        describe: 'Book id',
+        type: 'string',
+        default: null
+    })
+    .option('download-only', {
+        describe: 'Downloads the pages as individual pdfs and will provide a command that can be used to merge them with pdftk',
+        type: 'boolean',
+        default: false
+    })
+    .option('pdftk', {
+        describe: 'Downloads the pages as individual pdfs and merges them with pdftk',
+        type: 'boolean',
+        default: false
+    })
+    .option('pdftk-path', {
+        describe: 'Path to pdftk executable',
+        type: 'string',
+        default: 'pdftk'
+    })
+    .option('check-md5', {
+        describe: 'Checks the md5 hash of the downloaded pages',
+        type: 'boolean',
+        default: false
+    })
+    .option('output-filename', {
+        describe: 'Output filename',
+        type: 'string',
+        default: null
+    })
+    .help()
+    .argv;
+
 
 let key = new Uint8Array(***REMOVED***);
 
@@ -44,7 +87,26 @@ async function downloadAndDecryptFile(url) {
 
 (async () => {
 
-    let user = await fetch("https://www.bsmart.it/api/v5/user", {headers: {cookie:'_bsw_session_v1_production='+prompt('Input "_bsw_session_v1_production" cookie:')}});
+    if (argv.downloadOnly && argv.pdftk) {
+        console.log("Can't use --download-only and --pdftk at the same time");
+        return;
+    }
+
+    if ((argv.downloadOnly || argv.pdftk) && !fs.existsSync('temp')) {
+        fs.mkdirSync('temp');
+    }
+
+    if ((argv.downloadOnly || argv.pdftk) && fs.readdirSync('temp').length > 0) {
+        console.log("Files already in temp folder, please manually delete them if you want to download a new book");
+        return;
+    }
+
+    let cookie = argv.cookie;
+    while (!cookie) {
+        cookie = prompt('Input "_bsw_session_v1_production" cookie:');
+    }
+
+    let user = await fetch("https://www.bsmart.it/api/v5/user", {headers: {cookie:'_bsw_session_v1_production='+cookie}});
 
     if (user.status != 200) {
         console.log("Bad cookie");
@@ -61,11 +123,13 @@ async function downloadAndDecryptFile(url) {
         console.log('No books in your library!');
     } else {
         console.log("Book list:");
-        let i=0;
         console.table(books.map(book => ({ id: book.id, title: book.title })))
     }
     
-    let bookId = prompt(`Please input book id${(books.length == 0 ? " manually" : "")}:`);
+    let bookId = argv.bookId;
+    while (!bookId) {
+        bookId = prompt(`Please input book id${(books.length == 0 ? " manually" : "")}:`);
+    }
 
     let book = await fetch(`https://www.bsmart.it/api/v6/books/by_book_id/${bookId}`, {headers});
 
@@ -88,7 +152,11 @@ async function downloadAndDecryptFile(url) {
     
     console.log("Downloading pages");
 
-    const outputPdf = await PDFDocument.create()
+    const outputPdf = await PDFDocument.create();
+
+    const writeAwaitng = [];
+
+    const filenames = [];
 
     for (i = 0; i<info.length; i++) {
         for (j = 0; j<info[i].assets.length; j++) {
@@ -99,23 +167,44 @@ async function downloadAndDecryptFile(url) {
 
             let pageData = await downloadAndDecryptFile(info[i].assets[j].url).catch((e) => {console.log("Error Downloading page", e, i, j, info[i].assets[j].url)});
 
-            // if (md5(pageData) != info[i].assets[j].url) console.log("Missmatching md5 hash", i, j, info[i].assets[j].url)
+            if (argv.checkMd5 && md5(pageData) != info[i].assets[j].url) console.log("Missmatching md5 hash", i, j, info[i].assets[j].url)
 
-            //fs.writeFile(`temp/${i}-${j}.pdf`, pageData, (e)=>{});
-
-            const page = await PDFDocument.load(pageData);
-            const [firstDonorPage] = await outputPdf.copyPages(page, [0]);
-            outputPdf.addPage(firstDonorPage);
-
+            if (argv.downloadOnly || argv.pdftk) {
+                writeAwaitng.push(fs.promises.writeFile(`temp/${i}-${j}.pdf`, pageData, (e)=>{}));
+                filenames.push(`temp/${i}-${j}.pdf`);
+            } else {
+                const page = await PDFDocument.load(pageData);
+                const [firstDonorPage] = await outputPdf.copyPages(page, [0]);
+                outputPdf.addPage(firstDonorPage);
+            }
         }
     }
 
-    //fs.writeFile(prompt("Input file name:") + ".pdf", await outputPdf.save(), (e)=>{});
+    await Promise.all(writeAwaitng);
 
-    fs.writeFile(sanitize(book.id + " - " + book.title + ".pdf"), await outputPdf.save(), (e)=>{});
+    if (!argv.downloadOnly && !argv.pdftk) await fs.promises.writeFile(argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf"), await outputPdf.save());
 
-    console.log("Saving . . .");
-
+    if (argv.downloadOnly || argv.pdftk) {
+        let pdftkCommand = `${argv.pdftkPath} ${filenames.join(' ')} cat output "${argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf")}"`;
+        console.log("Run this command to merge the pages with pdftk:");
+        console.log(pdftkCommand);
+    }
+    if (argv.pdftk) {
+        console.log("Merging pages with pdftk");
+        let pdftk = spawn(argv.pdftkPath, filenames.concat(['cat', 'output', argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf")]));
+        pdftk.stdout.on('data', (data) => {
+            console.log(`stdout: ${data}`);
+        });
+        pdftk.stderr.on('data', (data) => {
+            console.log(`stderr: ${data}`);
+        });
+        pdftk.on('close', (code) => {
+            console.log(`child process exited with code ${code}`);
+            console.log("Done");
+        });
+    } else {
+        console.log("Done");
+    }
 })();
 
 /*(async ()=> {
