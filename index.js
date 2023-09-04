@@ -119,6 +119,14 @@ async function downloadAndDecryptFile(url) {
 
     let books = await fetch(`https://www.bsmart.it/api/v6/books?page_thumb_size=medium&per_page=25000`, {headers}).then(res => res.json());
 
+    let preactivations = await fetch(`https://www.bsmart.it/api/v5/books/preactivations`, {headers}).then(res => res.json());
+
+    preactivations.forEach(preactivation => {
+        if (preactivation.no_bsmart === false) {
+            books.push(...preactivation.books);
+        }
+    });
+
     if (books.length == 0) {
         console.log('No books in your library!');
     } else {
