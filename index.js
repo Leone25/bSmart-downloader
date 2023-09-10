@@ -85,133 +85,139 @@ async function downloadAndDecryptFile(url) {
 
 }
 
+var vaiAncora = true;
+
 (async () => {
 
-    if (argv.downloadOnly && argv.pdftk) {
-        console.log("Can't use --download-only and --pdftk at the same time");
-        return;
-    }
+    while(vaiAncora){
 
-    if ((argv.downloadOnly || argv.pdftk) && !fs.existsSync('temp')) {
-        fs.mkdirSync('temp');
-    }
-
-    if ((argv.downloadOnly || argv.pdftk) && fs.readdirSync('temp').length > 0) {
-        console.log("Files already in temp folder, please manually delete them if you want to download a new book");
-        return;
-    }
-
-    let cookie = argv.cookie;
-    while (!cookie) {
-        cookie = prompt('Input "_bsw_session_v1_production" cookie:');
-    }
-
-    let user = await fetch("https://www.bsmart.it/api/v5/user", {headers: {cookie:'_bsw_session_v1_production='+cookie}});
-
-    if (user.status != 200) {
-        console.log("Bad cookie");
-        return;
-    }
-
-    user = await user.json();
-
-    let headers = {"auth_token": user.auth_token};
-
-    let books = await fetch(`https://www.bsmart.it/api/v6/books?page_thumb_size=medium&per_page=25000`, {headers}).then(res => res.json());
-
-    let preactivations = await fetch(`https://www.bsmart.it/api/v5/books/preactivations`, {headers}).then(res => res.json());
-
-    preactivations.forEach(preactivation => {
-        if (preactivation.no_bsmart === false) {
-            books.push(...preactivation.books);
+        if (argv.downloadOnly && argv.pdftk) {
+            console.log("Can't use --download-only and --pdftk at the same time");
+            return;
         }
-    });
 
-    if (books.length == 0) {
-        console.log('No books in your library!');
-    } else {
-        console.log("Book list:");
-        console.table(books.map(book => ({ id: book.id, title: book.title })))
-    }
-    
-    let bookId = argv.bookId;
-    while (!bookId) {
-        bookId = prompt(`Please input book id${(books.length == 0 ? " manually" : "")}:`);
-    }
+        if ((argv.downloadOnly || argv.pdftk) && !fs.existsSync('temp')) {
+            fs.mkdirSync('temp');
+        }
 
-    let book = await fetch(`https://www.bsmart.it/api/v6/books/by_book_id/${bookId}`, {headers});
+        if ((argv.downloadOnly || argv.pdftk) && fs.readdirSync('temp').length > 0) {
+            console.log("Files already in temp folder, please manually delete them if you want to download a new book");
+            return;
+        }
 
-    if (book.status != 200) {
-        console.log("Invalid book id");
-        return;
-    }
+        let cookie = argv.cookie;
+        while (!cookie) {
+            cookie = prompt('Input "_bsw_session_v1_production" cookie:');
+        }
 
-    book = await book.json();
+        let user = await fetch("https://www.bsmart.it/api/v5/user", {headers: {cookie:'_bsw_session_v1_production='+cookie}});
 
-    let info = [];
-    let page = 1;
-    while (true) {
-        //console.log(page);
-        let tempInfo = await fetch(`https://api.bsmart.it/api/v5/books/${book.id}/${book.current_edition.revision}/resources?per_page=500&page=${page}`, {headers}).then(res => res.json());
-        info = info.concat(tempInfo);
-        if (tempInfo.length < 500) break;
-        page++;
-    }
-    
-    console.log("Downloading pages");
+        if (user.status != 200) {
+            console.log("Bad cookie");
+            return;
+        }
 
-    const outputPdf = await PDFDocument.create();
+        user = await user.json();
 
-    const writeAwaitng = [];
+        let headers = {"auth_token": user.auth_token};
 
-    const filenames = [];
+        let books = await fetch(`https://www.bsmart.it/api/v6/books?page_thumb_size=medium&per_page=25000`, {headers}).then(res => res.json());
 
-    for (i = 0; i<info.length; i++) {
-        for (j = 0; j<info[i].assets.length; j++) {
+        let preactivations = await fetch(`https://www.bsmart.it/api/v5/books/preactivations`, {headers}).then(res => res.json());
 
-            console.log(`Progress ${(i/info.length*100).toFixed(2)}%`);
+        preactivations.forEach(preactivation => {
+            if (preactivation.no_bsmart === false) {
+                books.push(...preactivation.books);
+            }
+        });
 
-            if (info[i].assets[j].use != "page_pdf") continue;
+        if (books.length == 0) {
+            console.log('No books in your library!');
+        } else {
+            console.log("Book list:");
+            console.table(books.map(book => ({ id: book.id, title: book.title })))
+        }
+        
+        let bookId = argv.bookId;
+        while (!bookId) {
+            bookId = prompt(`Please input book id${(books.length == 0 ? " manually" : "")}:`);
+        }
 
-            let pageData = await downloadAndDecryptFile(info[i].assets[j].url).catch((e) => {console.log("Error Downloading page", e, i, j, info[i].assets[j].url)});
+        let book = await fetch(`https://www.bsmart.it/api/v6/books/by_book_id/${bookId}`, {headers});
 
-            if (argv.checkMd5 && md5(pageData) != info[i].assets[j].url) console.log("Missmatching md5 hash", i, j, info[i].assets[j].url)
+        if (book.status != 200) {
+            console.log("Invalid book id");
+            return;
+        }
 
-            if (argv.downloadOnly || argv.pdftk) {
-                writeAwaitng.push(fs.promises.writeFile(`temp/${i}-${j}.pdf`, pageData, (e)=>{}));
-                filenames.push(`temp/${i}-${j}.pdf`);
-            } else {
-                const page = await PDFDocument.load(pageData);
-                const [firstDonorPage] = await outputPdf.copyPages(page, [0]);
-                outputPdf.addPage(firstDonorPage);
+        book = await book.json();
+
+        let info = [];
+        let page = 1;
+        while (true) {
+            //console.log(page);
+            let tempInfo = await fetch(`https://api.bsmart.it/api/v5/books/${book.id}/${book.current_edition.revision}/resources?per_page=500&page=${page}`, {headers}).then(res => res.json());
+            info = info.concat(tempInfo);
+            if (tempInfo.length < 500) break;
+            page++;
+        }
+        
+        console.log("Downloading pages");
+
+        const outputPdf = await PDFDocument.create();
+
+        const writeAwaitng = [];
+
+        const filenames = [];
+
+        for (i = 0; i<info.length; i++) {
+            for (j = 0; j<info[i].assets.length; j++) {
+
+                console.log(`Progress ${(i/info.length*100).toFixed(2)}%`);
+
+                if (info[i].assets[j].use != "page_pdf") continue;
+
+                let pageData = await downloadAndDecryptFile(info[i].assets[j].url).catch((e) => {console.log("Error Downloading page", e, i, j, info[i].assets[j].url)});
+
+                if (argv.checkMd5 && md5(pageData) != info[i].assets[j].url) console.log("Missmatching md5 hash", i, j, info[i].assets[j].url)
+
+                if (argv.downloadOnly || argv.pdftk) {
+                    writeAwaitng.push(fs.promises.writeFile(`temp/${i}-${j}.pdf`, pageData, (e)=>{}));
+                    filenames.push(`temp/${i}-${j}.pdf`);
+                } else {
+                    const page = await PDFDocument.load(pageData);
+                    const [firstDonorPage] = await outputPdf.copyPages(page, [0]);
+                    outputPdf.addPage(firstDonorPage);
+                }
             }
         }
-    }
 
-    await Promise.all(writeAwaitng);
+        await Promise.all(writeAwaitng);
 
-    if (!argv.downloadOnly && !argv.pdftk) await fs.promises.writeFile(argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf"), await outputPdf.save());
+        if (!argv.downloadOnly && !argv.pdftk) await fs.promises.writeFile(argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf"), await outputPdf.save());
 
-    if (argv.downloadOnly || argv.pdftk) {
-        let pdftkCommand = `${argv.pdftkPath} ${filenames.join(' ')} cat output "${argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf")}"`;
-        console.log("Run this command to merge the pages with pdftk:");
-        console.log(pdftkCommand);
-    }
-    if (argv.pdftk) {
-        console.log("Merging pages with pdftk");
-        let pdftk = spawn(argv.pdftkPath, filenames.concat(['cat', 'output', argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf")]));
-        pdftk.stdout.on('data', (data) => {
-            console.log(`stdout: ${data}`);
-        });
-        pdftk.stderr.on('data', (data) => {
-            console.log(`stderr: ${data}`);
-        });
-        pdftk.on('close', (code) => {
-            console.log(`child process exited with code ${code}`);
+        if (argv.downloadOnly || argv.pdftk) {
+            let pdftkCommand = `${argv.pdftkPath} ${filenames.join(' ')} cat output "${argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf")}"`;
+            console.log("Run this command to merge the pages with pdftk:");
+            console.log(pdftkCommand);
+        }
+        if (argv.pdftk) {
+            console.log("Merging pages with pdftk");
+            let pdftk = spawn(argv.pdftkPath, filenames.concat(['cat', 'output', argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf")]));
+            pdftk.stdout.on('data', (data) => {
+                console.log(`stdout: ${data}`);
+            });
+            pdftk.stderr.on('data', (data) => {
+                console.log(`stderr: ${data}`);
+            });
+            pdftk.on('close', (code) => {
+                console.log(`child process exited with code ${code}`);
+                console.log("Done");
+            });
+        } else {
             console.log("Done");
-        });
-    } else {
-        console.log("Done");
+        }
+        vaiAncora = prompt("Vuoi scaricare altri libri?(Si: true, No: false): \n");
     }
 })();
 
