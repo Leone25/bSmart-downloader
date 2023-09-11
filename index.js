@@ -89,42 +89,43 @@ var vaiAncora = true;
 
 (async () => {
 
+    
+
+    if (argv.downloadOnly && argv.pdftk) {
+        console.log("Can't use --download-only and --pdftk at the same time");
+        return;
+    }
+
+    if ((argv.downloadOnly || argv.pdftk) && !fs.existsSync('temp')) {
+        fs.mkdirSync('temp');
+    }
+
+    if ((argv.downloadOnly || argv.pdftk) && fs.readdirSync('temp').length > 0) {
+        console.log("Files already in temp folder, please manually delete them if you want to download a new book");
+        return;
+    }
+
+    let cookie = argv.cookie;
+    while (!cookie) {
+        cookie = prompt('Input "_bsw_session_v1_production" cookie:');
+    }
+
+    let user = await fetch("https://www.bsmart.it/api/v5/user", {headers: {cookie:'_bsw_session_v1_production='+cookie}});
+
+    if (user.status != 200) {
+        console.log("Bad cookie");
+        return;
+    }
+
+    user = await user.json();
+
+    let headers = {"auth_token": user.auth_token};
+
+    let books = await fetch(`https://www.bsmart.it/api/v6/books?page_thumb_size=medium&per_page=25000`, {headers}).then(res => res.json());
+
+    let preactivations = await fetch(`https://www.bsmart.it/api/v5/books/preactivations`, {headers}).then(res => res.json());
+
     while(vaiAncora){
-
-        if (argv.downloadOnly && argv.pdftk) {
-            console.log("Can't use --download-only and --pdftk at the same time");
-            return;
-        }
-
-        if ((argv.downloadOnly || argv.pdftk) && !fs.existsSync('temp')) {
-            fs.mkdirSync('temp');
-        }
-
-        if ((argv.downloadOnly || argv.pdftk) && fs.readdirSync('temp').length > 0) {
-            console.log("Files already in temp folder, please manually delete them if you want to download a new book");
-            return;
-        }
-
-        let cookie = argv.cookie;
-        while (!cookie) {
-            cookie = prompt('Input "_bsw_session_v1_production" cookie:');
-        }
-
-        let user = await fetch("https://www.bsmart.it/api/v5/user", {headers: {cookie:'_bsw_session_v1_production='+cookie}});
-
-        if (user.status != 200) {
-            console.log("Bad cookie");
-            return;
-        }
-
-        user = await user.json();
-
-        let headers = {"auth_token": user.auth_token};
-
-        let books = await fetch(`https://www.bsmart.it/api/v6/books?page_thumb_size=medium&per_page=25000`, {headers}).then(res => res.json());
-
-        let preactivations = await fetch(`https://www.bsmart.it/api/v5/books/preactivations`, {headers}).then(res => res.json());
-
         preactivations.forEach(preactivation => {
             if (preactivation.no_bsmart === false) {
                 books.push(...preactivation.books);
@@ -139,6 +140,7 @@ var vaiAncora = true;
         }
         
         let bookId = argv.bookId;
+    
         while (!bookId) {
             bookId = prompt(`Please input book id${(books.length == 0 ? " manually" : "")}:`);
         }
