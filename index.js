@@ -125,6 +125,8 @@ var vaiAncora = true;
 
     let preactivations = await fetch(`https://www.bsmart.it/api/v5/books/preactivations`, {headers}).then(res => res.json());
 
+    let bookFound = true;
+
     while(vaiAncora){
         preactivations.forEach(preactivation => {
             if (preactivation.no_bsmart === false) {
@@ -147,79 +149,87 @@ var vaiAncora = true;
 
         let book = await fetch(`https://www.bsmart.it/api/v6/books/by_book_id/${bookId}`, {headers});
 
-        if (book.status != 200) {
-            console.log("Invalid book id");
-            return;
+        if(book.status == 404){
+            console.log("Book not found");
+            bookFound = false;
         }
 
-        book = await book.json();
-
-        let info = [];
-        let page = 1;
-        while (true) {
-            //console.log(page);
-            let tempInfo = await fetch(`https://api.bsmart.it/api/v5/books/${book.id}/${book.current_edition.revision}/resources?per_page=500&page=${page}`, {headers}).then(res => res.json());
-            info = info.concat(tempInfo);
-            if (tempInfo.length < 500) break;
-            page++;
+        if (book.status != 200) {
+            console.log("Error during the request");
+            bookFound = false;
         }
         
-        console.log("Downloading pages");
+        if(bookFound){
+            book = await book.json();
 
-        const outputPdf = await PDFDocument.create();
-
-        const writeAwaitng = [];
-
-        const filenames = [];
-
-        for (i = 0; i<info.length; i++) {
-            for (j = 0; j<info[i].assets.length; j++) {
-
-                console.log(`Progress ${(i/info.length*100).toFixed(2)}%`);
-
-                if (info[i].assets[j].use != "page_pdf") continue;
-
-                let pageData = await downloadAndDecryptFile(info[i].assets[j].url).catch((e) => {console.log("Error Downloading page", e, i, j, info[i].assets[j].url)});
-
-                if (argv.checkMd5 && md5(pageData) != info[i].assets[j].url) console.log("Missmatching md5 hash", i, j, info[i].assets[j].url)
-
-                if (argv.downloadOnly || argv.pdftk) {
-                    writeAwaitng.push(fs.promises.writeFile(`temp/${i}-${j}.pdf`, pageData, (e)=>{}));
-                    filenames.push(`temp/${i}-${j}.pdf`);
-                } else {
-                    const page = await PDFDocument.load(pageData);
-                    const [firstDonorPage] = await outputPdf.copyPages(page, [0]);
-                    outputPdf.addPage(firstDonorPage);
+            let info = [];
+            let page = 1;
+            while (true) {
+                //console.log(page);
+                let tempInfo = await fetch(`https://api.bsmart.it/api/v5/books/${book.id}/${book.current_edition.revision}/resources?per_page=500&page=${page}`, {headers}).then(res => res.json());
+                info = info.concat(tempInfo);
+                if (tempInfo.length < 500) break;
+                page++;
+            }
+            
+            console.log("Downloading pages");
+    
+            const outputPdf = await PDFDocument.create();
+    
+            const writeAwaitng = [];
+    
+            const filenames = [];
+    
+            for (i = 0; i<info.length; i++) {
+                for (j = 0; j<info[i].assets.length; j++) {
+    
+                    console.log(`Progress ${(i/info.length*100).toFixed(2)}%`);
+    
+                    if (info[i].assets[j].use != "page_pdf") continue;
+    
+                    let pageData = await downloadAndDecryptFile(info[i].assets[j].url).catch((e) => {console.log("Error Downloading page", e, i, j, info[i].assets[j].url)});
+    
+                    if (argv.checkMd5 && md5(pageData) != info[i].assets[j].url) console.log("Missmatching md5 hash", i, j, info[i].assets[j].url)
+    
+                    if (argv.downloadOnly || argv.pdftk) {
+                        writeAwaitng.push(fs.promises.writeFile(`temp/${i}-${j}.pdf`, pageData, (e)=>{}));
+                        filenames.push(`temp/${i}-${j}.pdf`);
+                    } else {
+                        const page = await PDFDocument.load(pageData);
+                        const [firstDonorPage] = await outputPdf.copyPages(page, [0]);
+                        outputPdf.addPage(firstDonorPage);
+                    }
                 }
             }
-        }
-
-        await Promise.all(writeAwaitng);
-
-        if (!argv.downloadOnly && !argv.pdftk) await fs.promises.writeFile(argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf"), await outputPdf.save());
-
-        if (argv.downloadOnly || argv.pdftk) {
-            let pdftkCommand = `${argv.pdftkPath} ${filenames.join(' ')} cat output "${argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf")}"`;
-            console.log("Run this command to merge the pages with pdftk:");
-            console.log(pdftkCommand);
-        }
-        if (argv.pdftk) {
-            console.log("Merging pages with pdftk");
-            let pdftk = spawn(argv.pdftkPath, filenames.concat(['cat', 'output', argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf")]));
-            pdftk.stdout.on('data', (data) => {
-                console.log(`stdout: ${data}`);
-            });
-            pdftk.stderr.on('data', (data) => {
-                console.log(`stderr: ${data}`);
-            });
-            pdftk.on('close', (code) => {
-                console.log(`child process exited with code ${code}`);
+    
+            await Promise.all(writeAwaitng);
+    
+            if (!argv.downloadOnly && !argv.pdftk) await fs.promises.writeFile(argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf"), await outputPdf.save());
+    
+            if (argv.downloadOnly || argv.pdftk) {
+                let pdftkCommand = `${argv.pdftkPath} ${filenames.join(' ')} cat output "${argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf")}"`;
+                console.log("Run this command to merge the pages with pdftk:");
+                console.log(pdftkCommand);
+            }
+            if (argv.pdftk) {
+                console.log("Merging pages with pdftk");
+                let pdftk = spawn(argv.pdftkPath, filenames.concat(['cat', 'output', argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf")]));
+                pdftk.stdout.on('data', (data) => {
+                    console.log(`stdout: ${data}`);
+                });
+                pdftk.stderr.on('data', (data) => {
+                    console.log(`stderr: ${data}`);
+                });
+                pdftk.on('close', (code) => {
+                    console.log(`child process exited with code ${code}`);
+                    console.log("Done");
+                });
+            } else {
                 console.log("Done");
-            });
-        } else {
-            console.log("Done");
+            }
         }
-        vaiAncora = prompt("Vuoi scaricare altri libri?(Si: true, No: false): \n");
+       
+        vaiAncora = prompt("Vuoi scaricare altri libri?(Si: true, No: false):");
     }
 })();
 
