@@ -18,7 +18,7 @@ Download your books from bSmart as offline pdf
 4. Input the id of the book you'd like to download, either from the list or from the url, after `/books/`. It's ususally a 4 digit number
 5. Press enter and the script will start working, a file will be saved in the same folder as the one with the `index.js` with the name of the book, containing the full book downloaded.
 
-NOTE: some times this doesn't work flawlessly, i've tryed to fix all the issues I've had but in some cases you might need to do a manual download and merge, for this please download [pdftk](https://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/) and run `node index.js --pdftk`
+NOTE: some times this doesn't work flawlessly and/or the script crashes saying that `_this.catalog.Pages is not a function` , I've tryed to fix all the issues I've had but in some cases you might need to do a manual download and merge, for this please download [pdftk](https://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/) and run `node index.js --pdftk`
 
 Further options are available, run `node index.js --help` for more info.
 
