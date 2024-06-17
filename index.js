@@ -10,6 +10,16 @@ const md5 = require('md5');
 const { spawn } = require('child_process');
 
 const argv = yargs(process.argv.slice(2))
+	.option('site', {
+		describe: 'The site to download from, currently either bsmart or digibook24',
+		type: 'string',
+		default: null
+	})
+	.options('siteUrl', {
+		describe: 'This overwrites the base url for the site, useful in case a new platform is added',
+		type: 'string',
+		default: null
+	})
     .option('cookie', {
         describe: 'Input "_bsw_session_v1_production" cookie',
         type: 'string',
@@ -101,12 +111,27 @@ async function downloadAndDecryptFile(url) {
         return;
     }
 
+	let baseSite = argv.siteUrl;
+
+	if (!baseSite) {
+		let platform = argv.site;
+		while (!platform) {
+			platform = prompt('Input site (bsmart or digibook24):');
+			if (platform != 'bsmart' && platform != 'digibook24') {
+				platform = null;
+				console.log('Invalid site');
+			}
+		}
+
+		baseSite = platform == 'bsmart' ? 'www.bsmart.it' : 'web.digibook24.com';
+	}
+
     let cookie = argv.cookie;
     while (!cookie) {
         cookie = prompt('Input "_bsw_session_v1_production" cookie:');
     }
 
-    let user = await fetch("https://www.bsmart.it/api/v5/user", {headers: {cookie:'_bsw_session_v1_production='+cookie}});
+    let user = await fetch(`https://${baseSite}/api/v5/user`, {headers: {cookie:'_bsw_session_v1_production='+cookie}});
 
     if (user.status != 200) {
         console.log("Bad cookie");
@@ -117,9 +142,9 @@ async function downloadAndDecryptFile(url) {
 
     let headers = {"auth_token": user.auth_token};
 
-    let books = await fetch(`https://www.bsmart.it/api/v6/books?page_thumb_size=medium&per_page=25000`, {headers}).then(res => res.json());
+    let books = await fetch(`https://${baseSite}/api/v6/books?page_thumb_size=medium&per_page=25000`, {headers}).then(res => res.json());
 
-    let preactivations = await fetch(`https://www.bsmart.it/api/v5/books/preactivations`, {headers}).then(res => res.json());
+    let preactivations = await fetch(`https://${baseSite}/api/v5/books/preactivations`, {headers}).then(res => res.json());
 
     preactivations.forEach(preactivation => {
         if (preactivation.no_bsmart === false) {
@@ -139,7 +164,7 @@ async function downloadAndDecryptFile(url) {
         bookId = prompt(`Please input book id${(books.length == 0 ? " manually" : "")}:`);
     }
 
-    let book = await fetch(`https://www.bsmart.it/api/v6/books/by_book_id/${bookId}`, {headers});
+    let book = await fetch(`https://${baseSite}/api/v6/books/by_book_id/${bookId}`, {headers});
 
     if (book.status != 200) {
         console.log("Invalid book id");
@@ -152,7 +177,7 @@ async function downloadAndDecryptFile(url) {
     let page = 1;
     while (true) {
         //console.log(page);
-        let tempInfo = await fetch(`https://api.bsmart.it/api/v5/books/${book.id}/${book.current_edition.revision}/resources?per_page=500&page=${page}`, {headers}).then(res => res.json());
+        let tempInfo = await fetch(`https://${baseSite}/api/v5/books/${book.id}/${book.current_edition.revision}/resources?per_page=500&page=${page}`, {headers}).then(res => res.json());
         info = info.concat(tempInfo);
         if (tempInfo.length < 500) break;
         page++;
