@@ -1,6 +1,8 @@
 # bSmart-downloader
 Download your books from bSmart as offline pdf
 
+**NOW WITH DIGIBOOK24 SUPPORT!!!**
+
 
 ## How to use
 
@@ -14,9 +16,10 @@ Download your books from bSmart as offline pdf
 
 1. Open a terminal window in the folder where you extracted the repo
 2. Run `node index.js`
-3. Open [bSmart](https://my.bsmart.it) in your browser, then open the dev tools (F12) and go to the storage(Firefox) or application(Chromium) tab, there click on `Cookie`, then `https://my.bsmart.it`, then copy in the terminal the cookie called `_bsw_session_v1_production` (without any quotation marks)
-4. Input the id of the book you'd like to download, either from the list or from the url, after `/books/`. It's ususally a 4 digit number
-5. Press enter and the script will start working, a file will be saved in the same folder as the one with the `index.js` with the name of the book, containing the full book downloaded.
+3. Select the platform you'd like to download from
+4. Open [bSmart](https://my.bsmart.it) or [digibook24](https://my.digibook24.com/) in your browser, then open the dev tools (F12) and go to the storage(Firefox) or application(Chromium) tab, there click on `Cookie`, then `https://my.bsmart.it` (or `https://my.digibook24.com/`), then copy in the terminal the cookie called `_bsw_session_v1_production` (without any quotation marks)
+5. Input the id of the book you'd like to download, either from the list or from the url, after `/books/`. It's ususally a 4 digit number
+6. Press enter and the script will start working, a file will be saved in the same folder as the one with the `index.js` with the name of the book, containing the full book downloaded.
 
 NOTE: some times this doesn't work flawlessly and/or the script crashes saying that `_this.catalog.Pages is not a function` , I've tryed to fix all the issues I've had but in some cases you might need to do a manual download and merge, for this please download [pdftk](https://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/) and run `node index.js --pdftk`
 
