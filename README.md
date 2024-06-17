@@ -1,7 +1,7 @@
 # bSmart-downloader
 Download your books from bSmart as offline pdf
 
-**NOW WITH DIGIBOOK24 SUPPORT!!!**
+**NOW WITH DIGIBOOK24 (EdiErmes) SUPPORT!!!**
 
 
 ## How to use
