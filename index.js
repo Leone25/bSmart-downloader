@@ -8,6 +8,7 @@ const sanitize = require("sanitize-filename");
 const yargs = require('yargs/yargs');
 const md5 = require('md5');
 const { spawn } = require('child_process');
+const path = require('path');
 
 const argv = yargs(process.argv.slice(2))
 	.option('site', {
@@ -15,7 +16,7 @@ const argv = yargs(process.argv.slice(2))
 		type: 'string',
 		default: null
 	})
-	.options('siteUrl', {
+	.option('siteUrl', {
 		describe: 'This overwrites the base url for the site, useful in case a new platform is added',
 		type: 'string',
 		default: null
@@ -25,12 +26,12 @@ const argv = yargs(process.argv.slice(2))
         type: 'string',
         default: null
     })
-    .option('book-id', {
+    .option('bookId', {
         describe: 'Book id',
         type: 'string',
         default: null
     })
-    .option('download-only', {
+    .option('downloadOnly', {
         describe: 'Downloads the pages as individual pdfs and will provide a command that can be used to merge them with pdftk',
         type: 'boolean',
         default: false
@@ -40,20 +41,25 @@ const argv = yargs(process.argv.slice(2))
         type: 'boolean',
         default: false
     })
-    .option('pdftk-path', {
+    .option('pdftkPath', {
         describe: 'Path to pdftk executable',
         type: 'string',
         default: 'pdftk'
     })
-    .option('check-md5', {
+    .option('checkMd5', {
         describe: 'Checks the md5 hash of the downloaded pages',
         type: 'boolean',
         default: false
     })
-    .option('output-filename', {
+    .option('output', {
         describe: 'Output filename',
         type: 'string',
         default: null
+    })
+    .option('resources', {
+        describe: 'Download resources of the book instrad of the book it self',
+        type: 'boolean',
+        default: false
     })
     .help()
     .argv;
@@ -61,11 +67,9 @@ const argv = yargs(process.argv.slice(2))
 
 let key = new Uint8Array(***REMOVED***);
 
-async function downloadAndDecryptFile(url) { 
+async function decryptFile(file) { 
     
     return new Promise(async (resolve, reject) => {
-        let file = await fetch(url, {method: "GET"}).then(res => res.buffer());
-
         try {
             let header = msgpack.decode(file.slice(0, 256));
 
@@ -182,8 +186,6 @@ async function downloadAndDecryptFile(url) {
         if (tempInfo.length < 500) break;
         page++;
     }
-    
-    console.log("Downloading pages");
 
     const outputPdf = await PDFDocument.create();
 
@@ -191,20 +193,42 @@ async function downloadAndDecryptFile(url) {
 
     const filenames = [];
 
-    for (i = 0; i<info.length; i++) {
-        for (j = 0; j<info[i].assets.length; j++) {
+    const outputname = argv.outputFilename || sanitize(book.id + " - " + book.title);
 
-            console.log(`Progress ${(i/info.length*100).toFixed(2)}%`);
+    let assets = info.map(e=>e.assets).flat();
 
-            if (info[i].assets[j].use != "page_pdf") continue;
+    if (argv.resources) {
+        assets = assets.filter(e=>e.use == "launch_file");
+        if (!fs.existsSync(outputname)) {
+            fs.mkdirSync(outputname);
+        }
+        console.log("Downloading resources");
+    } else {
+        assets = assets.filter(e=>e.use == "page_pdf");
+        console.log("Downloading pages");
+    }
 
-            let pageData = await downloadAndDecryptFile(info[i].assets[j].url).catch((e) => {console.log("Error Downloading page", e, i, j, info[i].assets[j].url)});
+    for (let i = 0; i<assets.length; i++) {
+        console.log(`Progress ${(i/assets.length*100).toFixed(2)}% (${i+1}/${assets.length})`);
 
-            if (argv.checkMd5 && md5(pageData) != info[i].assets[j].url) console.log("Missmatching md5 hash", i, j, info[i].assets[j].url)
+        let asset = assets[i];
+
+        if (argv.resources) {
+            let resourceData = await fetch(asset.url).then(res => res.buffer());
+            if (asset.encrypted !== false) resourceData = await decryptFile(resourceData).catch((e) => {console.log("Error Downloading resource", e, i, asset)}); // some resources don't say they aren't encrypted but they are
+            if (argv.checkMd5 && md5(resourceData) != asset.url) console.log("Missmatching md5 hash", i, asset.url)
+            let filename = path.basename(asset.filename);
+            writeAwaitng.push(fs.promises.writeFile(`${outputname}/${filename}`, resourceData, (e)=>{}));
+        } else {
+            let pageData = await fetch(asset.url).then(res => res.buffer());
+            pageData = await decryptFile(pageData).catch((e) => {console.log("Error Downloading page", e, i, asset)});
+
+            if (argv.checkMd5 && md5(pageData) != asset.url) console.log("Missmatching md5 hash", i, asset.url)
 
             if (argv.downloadOnly || argv.pdftk) {
-                writeAwaitng.push(fs.promises.writeFile(`temp/${i}-${j}.pdf`, pageData, (e)=>{}));
-                filenames.push(`temp/${i}-${j}.pdf`);
+                let filename = path.basename(asset[i].filename, '.pdf');
+                writeAwaitng.push(fs.promises.writeFile(`temp/${filename}.pdf`, pageData, (e)=>{}));
+                filenames.push(`temp/${filename}.pdf`);
             } else {
                 const page = await PDFDocument.load(pageData);
                 const [firstDonorPage] = await outputPdf.copyPages(page, [0]);
@@ -215,29 +239,29 @@ async function downloadAndDecryptFile(url) {
 
     await Promise.all(writeAwaitng);
 
-    if (!argv.downloadOnly && !argv.pdftk) await fs.promises.writeFile(argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf"), await outputPdf.save());
-
-    if (argv.downloadOnly || argv.pdftk) {
-        let pdftkCommand = `${argv.pdftkPath} ${filenames.join(' ')} cat output "${argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf")}"`;
+    if (argv.resources) {
+        // do nothing
+    } if (!argv.downloadOnly && !argv.pdftk) await fs.promises.writeFile(outputname + ".pdf", await outputPdf.save());
+    else {
+        let pdftkCommand = `${argv.pdftkPath} ${filenames.join(' ')} cat output "${outputname}.pdf"`;
         console.log("Run this command to merge the pages with pdftk:");
         console.log(pdftkCommand);
+        if (argv.pdftk) {
+            console.log("Merging pages with pdftk");
+            let pdftk = spawn(argv.pdftkPath, filenames.concat(['cat', 'output', outputname + ".pdf"]));
+            pdftk.stdout.on('data', (data) => {
+                console.log(`stdout: ${data}`);
+            });
+            pdftk.stderr.on('data', (data) => {
+                console.log(`stderr: ${data}`);
+            });
+            pdftk.on('close', (code) => {
+                console.log(`child process exited with code ${code}`);
+                console.log("Done");
+            });
+        }
     }
-    if (argv.pdftk) {
-        console.log("Merging pages with pdftk");
-        let pdftk = spawn(argv.pdftkPath, filenames.concat(['cat', 'output', argv.outputFilename || sanitize(book.id + " - " + book.title + ".pdf")]));
-        pdftk.stdout.on('data', (data) => {
-            console.log(`stdout: ${data}`);
-        });
-        pdftk.stderr.on('data', (data) => {
-            console.log(`stderr: ${data}`);
-        });
-        pdftk.on('close', (code) => {
-            console.log(`child process exited with code ${code}`);
-            console.log("Done");
-        });
-    } else {
-        console.log("Done");
-    }
+    console.log("Done");
 })();
 
 /*(async ()=> {
