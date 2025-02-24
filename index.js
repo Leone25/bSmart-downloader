@@ -65,7 +65,7 @@ const argv = yargs(process.argv.slice(2))
     .argv;
 
 
-let key = new Uint8Array(***REMOVED***);
+let key = null;
 
 async function decryptFile(file) { 
     
@@ -95,8 +95,19 @@ async function decryptFile(file) {
         }
         
     });
-    
+}
 
+async function fetchEncryptionKey() {
+	let page = await fetch('https://my.bsmart.it/');
+	let text = await page.text();
+	let script = text.match(/<script src="(\/scripts\/.*.min.js)">/)[1];
+	let scriptText = await fetch('https://my.bsmart.it' + script).then(res => res.text());
+	let keyScript = scriptText.slice(scriptText.indexOf('var i=String.fromCharCode'));
+	keyScript = keyScript.slice(0, keyScript.indexOf('()'));
+	let sourceCharacters = keyScript.match(/var i=String.fromCharCode\((((\d+),)+(\d+))\)/)[1].split(',').map(e=>parseInt(e)).map(e=>String.fromCharCode(e));
+	let map = keyScript.match(/i\[\d+\]/g).map(e=>parseInt(e.slice(2, -1)));
+	let snippet = map.map(e=>sourceCharacters[e]).join('');
+	key = Buffer.from(snippet.match(/'((?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?)'/)[1], 'base64');
 }
 
 (async () => {
@@ -168,6 +179,8 @@ async function decryptFile(file) {
         bookId = prompt(`Please input book id${(books.length == 0 ? " manually" : "")}:`);
     }
 
+	console.log(`Fetching book info`)
+
     let book = await fetch(`https://${baseSite}/api/v6/books/by_book_id/${bookId}`, {headers});
 
     if (book.status != 200) {
@@ -196,6 +209,10 @@ async function decryptFile(file) {
     const outputname = argv.outputFilename || sanitize(book.id + " - " + book.title);
 
     let assets = info.map(e=>e.assets).flat();
+
+	console.log('Fetching encryption key');
+
+	await fetchEncryptionKey();
 
     if (argv.resources) {
         assets = assets.filter(e=>e.use == "launch_file");
@@ -264,6 +281,3 @@ async function decryptFile(file) {
     console.log("Done");
 })();
 
-/*(async ()=> {
-    fs.writeFile("test.pdf", await downloadAndDecryptFile("https://s3-eu-west-1.amazonaws.com/dea.bsmart.it/0/9/092662be7c3701b1c596057205fc8a7e"), (e)=>{});
-})()*/
