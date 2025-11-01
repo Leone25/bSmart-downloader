@@ -18,12 +18,17 @@ The easiest way! Modern web interface with guided steps and real-time progress.
    ```bash
    docker-compose up -d web
    ```
+   ⚠️ **Important**: Always specify `web` to start only the Web UI service!
+   
 4. Open your browser at **http://localhost:3001**
 5. Follow the guided interface to download your books!
 
 Downloaded PDFs will be in the `downloads/` folder.
 
-To stop: `docker-compose down`
+**Commands:**
+- Stop: `docker-compose down`
+- View logs: `docker logs -f bsmart-web`
+- Restart: `docker-compose restart web`
 
 ---
 
@@ -61,6 +66,7 @@ Use Docker without the Web UI (interactive terminal mode):
 3. Follow the prompts
 
 Or with CLI arguments:
+
 ```bash
 docker-compose --profile cli run --rm bsmart-downloader --site bsmart --cookie "YOUR_COOKIE" --bookId 1234
 ```
