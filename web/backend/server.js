@@ -1,161 +1,163 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const WebSocket = require('ws');
-const http = require('http');
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const WebSocket = require("ws");
+const http = require("http");
 
-const DownloadManager = require('./DownloadManager');
-const BookService = require('./BookService');
+const DownloadManager = require("./DownloadManager");
+const BookService = require("./BookService");
 
 /**
  * WebServer Class
  * Main server application
  */
 class WebServer {
-    constructor(port = 3000) {
-        this.port = port;
-        this.app = express();
-        this.server = http.createServer(this.app);
-        this.wss = new WebSocket.Server({ server: this.server });
-        this.downloadManager = new DownloadManager();
-        this.bookService = new BookService();
-        
-        this.setupMiddleware();
-        this.setupRoutes();
-        this.setupWebSocket();
-    }
+  constructor(port = 3000) {
+    this.port = port;
+    this.app = express();
+    this.server = http.createServer(this.app);
+    this.wss = new WebSocket.Server({ server: this.server });
+    this.downloadManager = new DownloadManager();
+    this.bookService = new BookService();
 
-    /**
-     * Setup Express middleware
-     */
-    setupMiddleware() {
-        this.app.use(cors());
-        this.app.use(express.json());
-        this.app.use(express.static(path.join(__dirname, '../frontend')));
-        this.app.use('/downloads', express.static('/output'));
-    }
+    this.setupMiddleware();
+    this.setupRoutes();
+    this.setupWebSocket();
+  }
 
-    /**
-     * Setup API routes
-     */
-    setupRoutes() {
-        // Health check
-        this.app.get('/api/health', (req, res) => {
-            res.json({ status: 'ok', timestamp: new Date() });
-        });
+  /**
+   * Setup Express middleware
+   */
+  setupMiddleware() {
+    this.app.use(cors());
+    this.app.use(express.json());
+    this.app.use(express.static(path.join(__dirname, "../frontend")));
+    this.app.use("/downloads", express.static("/output"));
+  }
 
-        // Validate cookie
-        this.app.post('/api/validate', async (req, res) => {
-            try {
-                const { site, cookie } = req.body;
-                const result = await this.bookService.validateCookie({ site, cookie });
-                res.json(result);
-            } catch (error) {
-                res.status(400).json({ error: error.message });
-            }
-        });
+  /**
+   * Setup API routes
+   */
+  setupRoutes() {
+    // Health check
+    this.app.get("/api/health", (req, res) => {
+      res.json({ status: "ok", timestamp: new Date() });
+    });
 
-        // Get books
-        this.app.post('/api/books', async (req, res) => {
-            try {
-                const { site, cookie } = req.body;
-                const books = await this.bookService.fetchBooks({ site, cookie });
-                res.json(books);
-            } catch (error) {
-                res.status(400).json({ error: error.message });
-            }
-        });
+    // Validate cookie
+    this.app.post("/api/validate", async (req, res) => {
+      try {
+        const { site, cookie } = req.body;
+        const result = await this.bookService.validateCookie({ site, cookie });
+        res.json(result);
+      } catch (error) {
+        res.status(400).json({ error: error.message });
+      }
+    });
 
-        // Start download
-        this.app.post('/api/download', (req, res) => {
-            try {
-                const { site, cookie, bookId } = req.body;
-                
-                if (!site || !cookie || !bookId) {
-                    return res.status(400).json({ error: 'Missing required parameters' });
-                }
+    // Get books
+    this.app.post("/api/books", async (req, res) => {
+      try {
+        const { site, cookie } = req.body;
+        const books = await this.bookService.fetchBooks({ site, cookie });
+        res.json(books);
+      } catch (error) {
+        res.status(400).json({ error: error.message });
+      }
+    });
 
-                const job = this.downloadManager.createJob({ site, cookie, bookId });
-                this.downloadManager.startDownload(job.id, { site, cookie, bookId });
-                
-                res.json({ jobId: job.id, status: job.status });
-            } catch (error) {
-                res.status(500).json({ error: error.message });
-            }
-        });
+    // Start download
+    this.app.post("/api/download", (req, res) => {
+      try {
+        const { site, cookie, bookId } = req.body;
 
-        // Get job status
-        this.app.get('/api/jobs/:jobId', (req, res) => {
-            const job = this.downloadManager.getJob(req.params.jobId);
-            if (!job) {
-                return res.status(404).json({ error: 'Job not found' });
-            }
-            res.json(job);
-        });
+        if (!site || !cookie || !bookId) {
+          return res.status(400).json({ error: "Missing required parameters" });
+        }
 
-        // Get all jobs
-        this.app.get('/api/jobs', (req, res) => {
-            const jobs = this.downloadManager.getAllJobs();
-            res.json(jobs);
-        });
+        const job = this.downloadManager.createJob({ site, cookie, bookId });
+        this.downloadManager.startDownload(job.id, { site, cookie, bookId });
 
-        // Cancel job
-        this.app.post('/api/jobs/:jobId/cancel', (req, res) => {
-            const success = this.downloadManager.cancelJob(req.params.jobId);
-            if (!success) {
-                return res.status(404).json({ error: 'Job not found' });
-            }
-            res.json({ success: true });
-        });
+        res.json({ jobId: job.id, status: job.status });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
 
-        // Delete job
-        this.app.delete('/api/jobs/:jobId', (req, res) => {
-            const success = this.downloadManager.deleteJob(req.params.jobId);
-            if (!success) {
-                return res.status(404).json({ error: 'Job not found' });
-            }
-            res.json({ success: true });
-        });
+    // Get job status
+    this.app.get("/api/jobs/:jobId", (req, res) => {
+      const job = this.downloadManager.getJob(req.params.jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      res.json(job);
+    });
 
-        // Serve frontend
-        this.app.get('*', (req, res) => {
-            res.sendFile(path.join(__dirname, '../frontend/index.html'));
-        });
-    }
+    // Get all jobs
+    this.app.get("/api/jobs", (req, res) => {
+      const jobs = this.downloadManager.getAllJobs();
+      res.json(jobs);
+    });
 
-    /**
-     * Setup WebSocket for real-time updates
-     */
-    setupWebSocket() {
-        this.wss.on('connection', (ws) => {
-            console.log('WebSocket client connected');
+    // Cancel job
+    this.app.post("/api/jobs/:jobId/cancel", (req, res) => {
+      const success = this.downloadManager.cancelJob(req.params.jobId);
+      if (!success) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      res.json({ success: true });
+    });
 
-            // Send job updates every second
-            const interval = setInterval(() => {
-                const jobs = this.downloadManager.getAllJobs();
-                ws.send(JSON.stringify({ type: 'jobs_update', data: jobs }));
-            }, 1000);
+    // Delete job
+    this.app.delete("/api/jobs/:jobId", (req, res) => {
+      const success = this.downloadManager.deleteJob(req.params.jobId);
+      if (!success) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      res.json({ success: true });
+    });
 
-            ws.on('close', () => {
-                console.log('WebSocket client disconnected');
-                clearInterval(interval);
-            });
+    // Serve frontend
+    this.app.get("*", (req, res) => {
+      res.sendFile(path.join(__dirname, "../frontend/index.html"));
+    });
+  }
 
-            ws.on('error', (error) => {
-                console.error('WebSocket error:', error);
-                clearInterval(interval);
-            });
-        });
-    }
+  /**
+   * Setup WebSocket for real-time updates
+   */
+  setupWebSocket() {
+    this.wss.on("connection", (ws) => {
+      console.log("WebSocket client connected");
 
-    /**
-     * Start the server
-     */
-    start() {
-        this.server.listen(this.port, () => {
-            console.log(`🚀 bSmart Downloader Web UI running on http://localhost:${this.port}`);
-        });
-    }
+      // Send job updates every second
+      const interval = setInterval(() => {
+        const jobs = this.downloadManager.getAllJobs();
+        ws.send(JSON.stringify({ type: "jobs_update", data: jobs }));
+      }, 1000);
+
+      ws.on("close", () => {
+        console.log("WebSocket client disconnected");
+        clearInterval(interval);
+      });
+
+      ws.on("error", (error) => {
+        console.error("WebSocket error:", error);
+        clearInterval(interval);
+      });
+    });
+  }
+
+  /**
+   * Start the server
+   */
+  start() {
+    this.server.listen(this.port, () => {
+      console.log(
+        `🚀 bSmart Downloader Web UI running on http://localhost:${this.port}`
+      );
+    });
+  }
 }
 
 // Start server
@@ -163,4 +165,3 @@ const server = new WebServer(process.env.PORT || 3000);
 server.start();
 
 module.exports = WebServer;
-
