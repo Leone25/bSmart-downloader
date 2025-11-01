@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>bSmart Downloader - Web UI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 bSmart Downloader</h1>
+            <p class="subtitle">Scarica i tuoi libri digitali come PDF</p>
+        </header>
+
+        <!-- Step 1: Platform Selection -->
+        <div id="step1" class="step active">
+            <div class="card">
+                <h2>1. Seleziona la Piattaforma</h2>
+                <div class="platform-selector">
+                    <label class="platform-option">
+                        <input type="radio" name="platform" value="bsmart" checked>
+                        <div class="platform-card">
+                            <h3>bSmart</h3>
+                            <p>my.bsmart.it</p>
+                        </div>
+                    </label>
+                    <label class="platform-option">
+                        <input type="radio" name="platform" value="digibook24">
+                        <div class="platform-card">
+                            <h3>digibook24</h3>
+                            <p>my.digibook24.com</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Cookie Input -->
+        <div id="step2" class="step">
+            <div class="card">
+                <h2>2. Inserisci il Cookie</h2>
+                <div class="cookie-instructions">
+                    <details>
+                        <summary>Come ottenere il cookie? (clicca per vedere)</summary>
+                        <ol>
+                            <li>Apri <strong id="platform-url">my.bsmart.it</strong> nel browser</li>
+                            <li>Fai login con il tuo account</li>
+                            <li>Premi <kbd>F12</kbd> per aprire gli strumenti sviluppatore</li>
+                            <li>Vai su <strong>Application</strong> (Chrome) o <strong>Storage</strong> (Firefox)</li>
+                            <li>Clicca su <strong>Cookies</strong> → <strong id="platform-cookie-url">https://my.bsmart.it</strong></li>
+                            <li>Cerca <code>_bsw_session_v1_production</code></li>
+                            <li>Copia il valore e incollalo qui sotto</li>
+                        </ol>
+                    </details>
+                </div>
+                <textarea 
+                    id="cookie-input" 
+                    placeholder="Incolla qui il cookie _bsw_session_v1_production..."
+                    rows="4"
+                ></textarea>
+                <button id="validate-btn" class="btn btn-primary">
+                    Valida Cookie
+                </button>
+                <div id="validation-result" class="message"></div>
+            </div>
+        </div>
+
+        <!-- Step 3: Book Selection -->
+        <div id="step3" class="step">
+            <div class="card">
+                <h2>3. Seleziona i Libri da Scaricare</h2>
+                <div id="books-loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Caricamento libri...</p>
+                </div>
+                <div id="books-list" class="books-grid"></div>
+                <div id="books-error" class="message error"></div>
+                <button id="download-btn" class="btn btn-success" disabled>
+                    📥 Scarica Selezionati
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 4: Download Progress -->
+        <div id="step4" class="step">
+            <div class="card">
+                <h2>4. Download in Corso</h2>
+                <div id="downloads-list"></div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button id="prev-btn" class="btn btn-secondary" disabled>
+                ← Indietro
+            </button>
+            <button id="next-btn" class="btn btn-primary">
+                Avanti →
+            </button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

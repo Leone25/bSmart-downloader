@@ -6,15 +6,38 @@ Download your books from bSmart as offline pdf
 
 ## How to use
 
-### Installation
+### 🌐 Web UI (Recommended - Easy & Visual)
 
-(NOTE: this assumes you already have [node.js](https://nodejs.org/))
+The easiest way! Modern web interface with guided steps and real-time progress.
+
+**Prerequisites**: [Docker](https://www.docker.com/get-started) and Docker Compose installed.
+
+1. Download and extract the repo
+2. Open a terminal in the project folder
+3. Start the Web UI:
+   ```bash
+   docker-compose up -d web
+   ```
+4. Open your browser at **http://localhost:3001**
+5. Follow the guided interface to download your books!
+
+Downloaded PDFs will be in the `downloads/` folder.
+
+To stop: `docker-compose down`
+
+---
+
+### 💻 Command Line (Node.js)
+
+**Prerequisites**: [Node.js](https://nodejs.org/) installed.
+
+#### Installation
 
 1. Download and extract the repo
 2. Open a terminal window in the folder where you extracted the repo
 3. Run `npm i` to install all the required dependencies
 
-### Usage
+#### Usage
 
 1. Open a terminal window in the folder where you extracted the repo
 2. Run `node index.js`
@@ -27,38 +50,38 @@ NOTE: some times this doesn't work flawlessly and/or the script crashes saying t
 
 Further options are available, run `node index.js --help` for more info.
 
-### Alternative: Using Docker
+---
 
-If you don't want to deal with Node.js installation and configuration, you can use Docker:
+### 🐳 Docker CLI (Alternative)
 
-**Prerequisites**: [Docker](https://www.docker.com/get-started) and Docker Compose installed on your system.
+Use Docker without the Web UI (interactive terminal mode):
 
-1. Download and extract the repo
-2. Open a terminal window in the folder where you extracted the repo
-3. Build the Docker image:
-   ```bash
-   docker-compose build
-   ```
-4. Run the application:
-   ```bash
-   docker-compose run --rm bsmart-downloader
-   ```
-5. Follow the same prompts as described above
-6. Downloaded PDFs will be saved in the `downloads/` folder
+1. Build: `docker-compose build`
+2. Run: `docker-compose --profile cli run --rm bsmart-downloader`
+3. Follow the prompts
 
-You can also pass CLI arguments:
-
+Or with CLI arguments:
 ```bash
-docker-compose run --rm bsmart-downloader --site bsmart --cookie "YOUR_COOKIE" --bookId 1234
+docker-compose --profile cli run --rm bsmart-downloader --site bsmart --cookie "YOUR_COOKIE" --bookId 1234
 ```
 
-For all available options:
+Help: `docker-compose --profile cli run --rm bsmart-downloader --help`
 
-```bash
-docker-compose run --rm bsmart-downloader --help
-```
+---
 
-Enjoy
+## 📖 Getting the Cookie
+
+For all methods, you need the session cookie from bSmart/digibook24:
+
+1. Open [my.bsmart.it](https://my.bsmart.it) or [my.digibook24.com](https://my.digibook24.com)
+2. Login to your account
+3. Press **F12** to open Developer Tools
+4. Go to **Application** (Chrome) or **Storage** (Firefox) tab
+5. Click **Cookies** → Select the website
+6. Find `_bsw_session_v1_production`
+7. Copy the **Value** (long string)
+
+Enjoy!
 
 Remember that you are responsible for what you are doing on the internet and even tho this script exists it might not be legal in your country to create personal backups of books.
 

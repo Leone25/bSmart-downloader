@@ -65,6 +65,11 @@ const argv = yargs(process.argv.slice(2))
     type: "boolean",
     default: false,
   })
+  .option("listOnly", {
+    describe: "Only list available books in JSON format and exit",
+    type: "boolean",
+    default: false,
+  })
   .help().argv;
 
 let key = null;
@@ -197,6 +202,12 @@ async function fetchEncryptionKey() {
       books.push(...preactivation.books);
     }
   });
+
+  // If listOnly flag is set, output JSON and exit
+  if (argv.listOnly) {
+    console.log(JSON.stringify(books.map((book) => ({ id: book.id, title: book.title }))));
+    return;
+  }
 
   if (books.length == 0) {
     console.log("No books in your library!");

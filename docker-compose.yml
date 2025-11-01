@@ -1,37 +1,51 @@
 version: "3.8"
 
 services:
+  # Web UI Service (recommended)
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    image: bsmart-downloader-web:latest
+    container_name: bsmart-web
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./downloads:/output
+      - ./temp:/app/temp
+    environment:
+      - NODE_ENV=production
+      - OUTPUT_DIR=/output
+      - PORT=3000
+    restart: unless-stopped
+
+  # CLI Service (interactive mode)
   bsmart-downloader:
     build: .
     image: bsmart-downloader:latest
     container_name: bsmart-downloader
-
+    profiles:
+      - cli
     stdin_open: true
     tty: true
-
     volumes:
       - ./downloads:/output
       - ./temp:/app/temp
-
     working_dir: /app
-
     environment:
       - NODE_ENV=production
       - OUTPUT_DIR=/output
-
     command: []
 
+  # CLI Service (command-line arguments)
   bsmart-downloader-cli:
     build: .
     image: bsmart-downloader:latest
     container_name: bsmart-downloader-cli
     profiles:
       - cli
-
     volumes:
       - ./downloads:/output
       - ./temp:/app/temp
-
     working_dir: /app
-
     entrypoint: ["node", "index.js"]
