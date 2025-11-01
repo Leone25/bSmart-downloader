@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  bsmart-downloader:
+    build: .
+    image: bsmart-downloader:latest
+    container_name: bsmart-downloader
+
+    stdin_open: true
+    tty: true
+
+    volumes:
+      - ./downloads:/output
+      - ./temp:/app/temp
+
+    working_dir: /app
+
+    environment:
+      - NODE_ENV=production
+      - OUTPUT_DIR=/output
+
+    command: []
+
+  bsmart-downloader-cli:
+    build: .
+    image: bsmart-downloader:latest
+    container_name: bsmart-downloader-cli
+    profiles:
+      - cli
+
+    volumes:
+      - ./downloads:/output
+      - ./temp:/app/temp
+
+    working_dir: /app
+
+    entrypoint: ["node", "index.js"]

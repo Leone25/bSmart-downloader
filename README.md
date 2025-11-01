@@ -1,13 +1,15 @@
 # bSmart-downloader
+
 Download your books from bSmart as offline pdf
 
 **NOW WITH DIGIBOOK24 (EdiErmes) SUPPORT!!!**
 
-
 ## How to use
 
 ### Installation
+
 (NOTE: this assumes you already have [node.js](https://nodejs.org/))
+
 1. Download and extract the repo
 2. Open a terminal window in the folder where you extracted the repo
 3. Run `npm i` to install all the required dependencies
@@ -24,6 +26,37 @@ Download your books from bSmart as offline pdf
 NOTE: some times this doesn't work flawlessly and/or the script crashes saying that `_this.catalog.Pages is not a function` , I've tryed to fix all the issues I've had but in some cases you might need to do a manual download and merge, for this please download [pdftk](https://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/) and run `node index.js --pdftk`
 
 Further options are available, run `node index.js --help` for more info.
+
+### Alternative: Using Docker
+
+If you don't want to deal with Node.js installation and configuration, you can use Docker:
+
+**Prerequisites**: [Docker](https://www.docker.com/get-started) and Docker Compose installed on your system.
+
+1. Download and extract the repo
+2. Open a terminal window in the folder where you extracted the repo
+3. Build the Docker image:
+   ```bash
+   docker-compose build
+   ```
+4. Run the application:
+   ```bash
+   docker-compose run --rm bsmart-downloader
+   ```
+5. Follow the same prompts as described above
+6. Downloaded PDFs will be saved in the `downloads/` folder
+
+You can also pass CLI arguments:
+
+```bash
+docker-compose run --rm bsmart-downloader --site bsmart --cookie "YOUR_COOKIE" --bookId 1234
+```
+
+For all available options:
+
+```bash
+docker-compose run --rm bsmart-downloader --help
+```
 
 Enjoy
 

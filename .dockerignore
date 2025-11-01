@@ -1,0 +1,33 @@
+# Node modules
+node_modules/
+npm-debug.log
+package-lock.json
+
+# Git files
+.git/
+.gitignore
+
+# Downloaded files
+*.pdf
+downloads/
+temp/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (no need to copy these into the image)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation (already copied explicitly if needed)
+# README.md is copied in Dockerfile
+
