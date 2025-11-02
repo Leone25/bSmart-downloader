@@ -75,7 +75,7 @@ const argv = yargs(process.argv.slice(2))
 let key = null;
 
 // Retry function for network requests
-async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+async function fetchWithRetry(url, options = {}, maxRetries = 5) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const response = await fetch(url, options);
@@ -92,7 +92,7 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
         error.type === "system";
 
       if (isNetworkError && !isLastAttempt) {
-        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // exponential backoff, max 5s
+        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // exponential backoff, max 10s
         console.log(
           `Network error on attempt ${attempt}/${maxRetries}, retrying in ${waitTime}ms...`
         );
@@ -316,6 +316,11 @@ async function fetchEncryptionKey() {
         assets.length
       })`
     );
+
+    // Add delay between downloads to avoid rate limiting
+    if (i > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms delay
+    }
 
     let asset = assets[i];
 
