@@ -7,101 +7,175 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📚 bSmart Downloader</h1>
-            <p class="subtitle">Scarica i tuoi libri digitali come PDF</p>
-        </header>
-
-        <!-- Step 1: Platform Selection -->
-        <div id="step1" class="step active">
-            <div class="card">
-                <h2>1. Seleziona la Piattaforma</h2>
-                <div class="platform-selector">
-                    <label class="platform-option">
-                        <input type="radio" name="platform" value="bsmart" checked>
-                        <div class="platform-card">
-                            <h3>bSmart</h3>
-                            <p>my.bsmart.it</p>
-                        </div>
-                    </label>
-                    <label class="platform-option">
-                        <input type="radio" name="platform" value="digibook24">
-                        <div class="platform-card">
-                            <h3>digibook24</h3>
-                            <p>my.digibook24.com</p>
-                        </div>
-                    </label>
-                </div>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>📚 bSmart</h1>
+                <p>Downloader</p>
             </div>
-        </div>
-
-        <!-- Step 2: Cookie Input -->
-        <div id="step2" class="step">
-            <div class="card">
-                <h2>2. Inserisci il Cookie</h2>
-                <div class="cookie-instructions">
-                    <details>
-                        <summary>Come ottenere il cookie? (clicca per vedere)</summary>
-                        <ol>
-                            <li>Apri <strong id="platform-url">my.bsmart.it</strong> nel browser</li>
-                            <li>Fai login con il tuo account</li>
-                            <li>Premi <kbd>F12</kbd> per aprire gli strumenti sviluppatore</li>
-                            <li>Vai su <strong>Application</strong> (Chrome) o <strong>Storage</strong> (Firefox)</li>
-                            <li>Clicca su <strong>Cookies</strong> → <strong id="platform-cookie-url">https://my.bsmart.it</strong></li>
-                            <li>Cerca <code>_bsw_session_v1_production</code></li>
-                            <li>Copia il valore e incollalo qui sotto</li>
-                        </ol>
-                    </details>
-                </div>
-                <textarea 
-                    id="cookie-input" 
-                    placeholder="Incolla qui il cookie _bsw_session_v1_production..."
-                    rows="4"
-                ></textarea>
-                <button id="validate-btn" class="btn btn-primary">
-                    Valida Cookie
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-section="validate">
+                    <span class="nav-icon">🔑</span>
+                    <span class="nav-label">Validazione</span>
                 </button>
-                <div id="validation-result" class="message"></div>
-            </div>
-        </div>
-
-        <!-- Step 3: Book Selection -->
-        <div id="step3" class="step">
-            <div class="card">
-                <h2>3. Seleziona i Libri da Scaricare</h2>
-                <div id="books-loading" class="loading">
-                    <div class="spinner"></div>
-                    <p>Caricamento libri...</p>
-                </div>
-                <div id="books-list" class="books-grid"></div>
-                <div id="books-error" class="message error"></div>
-                <button id="download-btn" class="btn btn-success" disabled>
-                    📥 Scarica Selezionati
+                <button class="nav-item" data-section="books">
+                    <span class="nav-icon">📖</span>
+                    <span class="nav-label">Libri</span>
+                    <span class="nav-badge" id="books-badge">0</span>
                 </button>
+                <button class="nav-item" data-section="downloads">
+                    <span class="nav-icon">⬇️</span>
+                    <span class="nav-label">Download</span>
+                    <span class="nav-badge" id="downloads-badge">0</span>
+                </button>
+                <button class="nav-item" data-section="completed">
+                    <span class="nav-icon">✅</span>
+                    <span class="nav-label">Completati</span>
+                    <span class="nav-badge" id="completed-badge">0</span>
+                </button>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="connection-status">
+                    <span class="status-indicator" id="ws-status"></span>
+                    <span class="status-text" id="ws-status-text">Connessione...</span>
+                </div>
             </div>
-        </div>
+        </aside>
 
-        <!-- Step 4: Download Progress -->
-        <div id="step4" class="step">
-            <div class="card">
-                <h2>4. Download in Corso</h2>
-                <div id="downloads-list"></div>
-            </div>
-        </div>
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="main-header">
+                <div class="header-content">
+                    <h2 id="section-title">Validazione Cookie</h2>
+                    <p id="section-subtitle">Inserisci le credenziali per iniziare</p>
+                </div>
+            </header>
 
-        <!-- Navigation -->
-        <div class="navigation">
-            <button id="prev-btn" class="btn btn-secondary" disabled>
-                ← Indietro
-            </button>
-            <button id="next-btn" class="btn btn-primary">
-                Avanti →
-            </button>
-        </div>
+            <!-- Validate Section -->
+            <section id="validate-section" class="content-section active">
+                <div class="card">
+                    <h3>Seleziona la Piattaforma</h3>
+                    <div class="platform-selector">
+                        <label class="platform-option">
+                            <input type="radio" name="platform" value="bsmart" checked>
+                            <div class="platform-card">
+                                <span class="platform-icon">🎓</span>
+                                <h4>bSmart</h4>
+                                <p>my.bsmart.it</p>
+                            </div>
+                        </label>
+                        <label class="platform-option">
+                            <input type="radio" name="platform" value="digibook24">
+                            <div class="platform-card">
+                                <span class="platform-icon">📚</span>
+                                <h4>digibook24</h4>
+                                <p>my.digibook24.com</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Inserisci il Cookie</h3>
+                    <div class="cookie-instructions">
+                        <details>
+                            <summary>Come ottenere il cookie? (clicca per vedere)</summary>
+                            <ol>
+                                <li>Apri <strong id="platform-url">my.bsmart.it</strong> nel browser</li>
+                                <li>Fai login con il tuo account</li>
+                                <li>Premi <kbd>F12</kbd> per aprire gli strumenti sviluppatore</li>
+                                <li>Vai su <strong>Application</strong> (Chrome) o <strong>Storage</strong> (Firefox)</li>
+                                <li>Clicca su <strong>Cookies</strong> → <strong id="platform-cookie-url">https://my.bsmart.it</strong></li>
+                                <li>Cerca <code>_bsw_session_v1_production</code></li>
+                                <li>Copia il valore e incollalo qui sotto</li>
+                            </ol>
+                        </details>
+                    </div>
+                    <textarea 
+                        id="cookie-input" 
+                        placeholder="Incolla qui il cookie _bsw_session_v1_production..."
+                        rows="4"
+                    ></textarea>
+                    <button id="validate-btn" class="btn btn-primary">
+                        <span class="btn-icon">🔓</span>
+                        Valida Cookie
+                    </button>
+                    <div id="validation-result" class="message"></div>
+                </div>
+            </section>
+
+            <!-- Books Section -->
+            <section id="books-section" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>I Tuoi Libri</h3>
+                        <div class="search-box">
+                            <input 
+                                type="text" 
+                                id="book-search" 
+                                placeholder="🔍 Cerca libri..."
+                                disabled
+                            >
+                        </div>
+                    </div>
+                    
+                    <div id="books-loading" class="loading">
+                        <div class="spinner"></div>
+                        <p>Caricamento libri...</p>
+                    </div>
+                    
+                    <div id="books-list" class="books-grid"></div>
+                    <div id="books-error" class="message error"></div>
+                </div>
+                
+                <div class="floating-action">
+                    <button id="download-selected-btn" class="btn btn-success btn-large" disabled>
+                        <span class="btn-icon">📥</span>
+                        <span id="download-btn-text">Scarica Selezionati</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Downloads Section -->
+            <section id="downloads-section" class="content-section">
+                <div class="card">
+                    <h3>Download in Corso</h3>
+                    <div id="active-downloads" class="downloads-list">
+                        <div class="empty-state">
+                            <span class="empty-icon">⬇️</span>
+                            <p>Nessun download in corso</p>
+                            <small>Seleziona dei libri dalla sezione "Libri" per iniziare</small>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Completed Section -->
+            <section id="completed-section" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Libri Completati</h3>
+                        <button id="refresh-completed-btn" class="btn btn-secondary btn-small">
+                            <span class="btn-icon">🔄</span>
+                            Aggiorna
+                        </button>
+                    </div>
+                    
+                    <div id="completed-downloads" class="completed-list">
+                        <div class="empty-state">
+                            <span class="empty-icon">📚</span>
+                            <p>Nessun libro scaricato</p>
+                            <small>I libri completati appariranno qui</small>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
     </div>
 
     <script src="app.js"></script>
 </body>
 </html>
-

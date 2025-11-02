@@ -3,3 +3,4 @@ web/node_modules
 temp
 *.pdf
 downloads
+.env

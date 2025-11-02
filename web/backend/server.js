@@ -90,13 +90,50 @@ class WebServer {
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
       }
-      res.json(job);
+      // Don't send the process object
+      const { process, ...jobData } = job;
+      res.json(jobData);
     });
 
     // Get all jobs
     this.app.get("/api/jobs", (req, res) => {
       const jobs = this.downloadManager.getAllJobs();
+      console.log(`[Server] Sending ${jobs.length} jobs to client`);
+      jobs.forEach(job => {
+        console.log(`  - Job ${job.id}: status=${job.status}, progress=${job.progress}%`);
+      });
       res.json(jobs);
+    });
+
+    // Get downloaded files
+    this.app.get("/api/downloaded", async (req, res) => {
+      try {
+        const fs = require("fs").promises;
+        const outputDir = "/output";
+
+        try {
+          const files = await fs.readdir(outputDir);
+          const pdfFiles = files.filter((f) => f.endsWith(".pdf"));
+
+          const filesWithStats = await Promise.all(
+            pdfFiles.map(async (file) => {
+              const stats = await fs.stat(path.join(outputDir, file));
+              return {
+                name: file,
+                size: stats.size,
+                date: stats.mtime,
+                url: `/downloads/${file}`,
+              };
+            })
+          );
+
+          res.json(filesWithStats.sort((a, b) => b.date - a.date));
+        } catch (err) {
+          res.json([]);
+        }
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
     });
 
     // Cancel job

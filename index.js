@@ -74,6 +74,37 @@ const argv = yargs(process.argv.slice(2))
 
 let key = null;
 
+// Retry function for network requests
+async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response;
+    } catch (error) {
+      const isLastAttempt = attempt === maxRetries;
+      const isNetworkError =
+        error.code === "ECONNREFUSED" ||
+        error.code === "ETIMEDOUT" ||
+        error.code === "ENOTFOUND" ||
+        error.type === "system";
+
+      if (isNetworkError && !isLastAttempt) {
+        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // exponential backoff, max 5s
+        console.log(
+          `Network error on attempt ${attempt}/${maxRetries}, retrying in ${waitTime}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+        continue;
+      }
+
+      throw error;
+    }
+  }
+}
+
 async function decryptFile(file) {
   return new Promise(async (resolve, reject) => {
     try {
@@ -112,11 +143,11 @@ async function decryptFile(file) {
 }
 
 async function fetchEncryptionKey() {
-  let page = await fetch("https://my.bsmart.it/");
+  let page = await fetchWithRetry("https://my.bsmart.it/");
   let text = await page.text();
   let script = text.match(/<script src="(\/scripts\/.*.min.js)">/)[1];
-  let scriptText = await fetch("https://my.bsmart.it" + script).then((res) =>
-    res.text()
+  let scriptText = await fetchWithRetry("https://my.bsmart.it" + script).then(
+    (res) => res.text()
   );
   let keyScript = scriptText.slice(
     scriptText.indexOf("var i=String.fromCharCode")
@@ -174,7 +205,7 @@ async function fetchEncryptionKey() {
     cookie = prompt('Input "_bsw_session_v1_production" cookie:');
   }
 
-  let user = await fetch(`https://${baseSite}/api/v5/user`, {
+  let user = await fetchWithRetry(`https://${baseSite}/api/v5/user`, {
     headers: { cookie: "_bsw_session_v1_production=" + cookie },
   });
 
@@ -187,12 +218,12 @@ async function fetchEncryptionKey() {
 
   let headers = { auth_token: user.auth_token };
 
-  let books = await fetch(
+  let books = await fetchWithRetry(
     `https://${baseSite}/api/v6/books?page_thumb_size=medium&per_page=25000`,
     { headers }
   ).then((res) => res.json());
 
-  let preactivations = await fetch(
+  let preactivations = await fetchWithRetry(
     `https://${baseSite}/api/v5/books/preactivations`,
     { headers }
   ).then((res) => res.json());
@@ -205,7 +236,9 @@ async function fetchEncryptionKey() {
 
   // If listOnly flag is set, output JSON and exit
   if (argv.listOnly) {
-    console.log(JSON.stringify(books.map((book) => ({ id: book.id, title: book.title }))));
+    console.log(
+      JSON.stringify(books.map((book) => ({ id: book.id, title: book.title })))
+    );
     return;
   }
 
@@ -225,7 +258,7 @@ async function fetchEncryptionKey() {
 
   console.log(`Fetching book info`);
 
-  let book = await fetch(
+  let book = await fetchWithRetry(
     `https://${baseSite}/api/v6/books/by_book_id/${bookId}`,
     { headers }
   );
@@ -241,7 +274,7 @@ async function fetchEncryptionKey() {
   let page = 1;
   while (true) {
     //console.log(page);
-    let tempInfo = await fetch(
+    let tempInfo = await fetchWithRetry(
       `https://${baseSite}/api/v5/books/${book.id}/${book.current_edition.revision}/resources?per_page=500&page=${page}`,
       { headers }
     ).then((res) => res.json());
@@ -257,8 +290,7 @@ async function fetchEncryptionKey() {
   const filenames = [];
 
   const outputDir = process.env.OUTPUT_DIR || ".";
-  const outputname =
-    argv.outputFilename || sanitize(book.id + " - " + book.title);
+  const outputname = argv.output || sanitize(book.id + " - " + book.title);
   const outputPath = `${outputDir}/${outputname}`;
 
   let assets = info.map((e) => e.assets).flat();
@@ -288,7 +320,9 @@ async function fetchEncryptionKey() {
     let asset = assets[i];
 
     if (argv.resources) {
-      let resourceData = await fetch(asset.url).then((res) => res.buffer());
+      let resourceData = await fetchWithRetry(asset.url).then((res) =>
+        res.buffer()
+      );
       if (asset.encrypted !== false)
         resourceData = await decryptFile(resourceData).catch((e) => {
           console.log("Error Downloading resource", e, i, asset);
@@ -304,7 +338,9 @@ async function fetchEncryptionKey() {
         )
       );
     } else {
-      let pageData = await fetch(asset.url).then((res) => res.buffer());
+      let pageData = await fetchWithRetry(asset.url).then((res) =>
+        res.buffer()
+      );
       pageData = await decryptFile(pageData).catch((e) => {
         console.log("Error Downloading page", e, i, asset);
       });

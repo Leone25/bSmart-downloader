@@ -17,6 +17,11 @@ services:
       - NODE_ENV=production
       - OUTPUT_DIR=/output
       - PORT=3000
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    network_mode: bridge
     restart: unless-stopped
 
   # CLI Service (interactive mode)
