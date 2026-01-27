@@ -33,4 +33,4 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 MIT licence
 
-I may or may not update it depending on my needs tho I'm open to pullup requests ecc.
+I may or may not update it depending on my needs tho I'm open to pullup requests, please check [CONTRIBUTING](CONTRIBUTING.md).
