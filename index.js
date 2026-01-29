@@ -205,45 +205,51 @@ const argv = yargs(hideBin(process.argv))
     // Create download tasks with concurrency control
     const downloadTasks = assets.map((asset, i) =>
         limit(async () => {
-            process.stdout.write(`\rProgress ${((i + 1) / assets.length * 100).toFixed(2)}% (${i + 1}/${assets.length})`);
-
-            if (argv.resources) {
-                let resourceData = await fetch(asset.url).then(res => res.buffer());
+            try {
+                let data = await fetch(asset.url).then(res => res.buffer());
                 if (asset.encrypted !== false) {
-                    resourceData = await decryptFile(resourceData, encryptionKey).catch((e) => {
-                        console.log("Error Downloading resource", e, i, asset);
-                    });
+                    data = await decryptFile(data, encryptionKey);
                 }
-                if (argv.checkMd5 && md5(resourceData) != asset.url) {
-                    console.log("Mismatching md5 hash", i, asset.url);
+                if (argv.checkMd5 && md5(data) != asset.url) {
+                    console.log(`\nMismatching md5 hash for asset ${i}: ${asset.url}`);
                 }
-                const filename = path.basename(asset.filename);
-                await fs.promises.writeFile(`${outputname}/${filename}`, resourceData);
-            } else {
-                let pageData = await fetch(asset.url).then(res => res.buffer());
-                pageData = await decryptFile(pageData, encryptionKey).catch((e) => {
-                    console.log("Error Downloading page", e, i, asset);
-                });
-
-                if (argv.checkMd5 && md5(pageData) != asset.url) {
-                    console.log("Mismatching md5 hash", i, asset.url);
-                }
-
-                if (argv.downloadOnly || argv.pdftk) {
-                    const filename = path.basename(asset.filename, '.pdf');
-                    await fs.promises.writeFile(`temp/${filename}.pdf`, pageData);
-                    filenames.push(`temp/${filename}.pdf`);
-                } else {
-                    const page = await PDFDocument.load(pageData);
-                    const [firstDonorPage] = await outputPdf.copyPages(page, [0]);
-                    outputPdf.addPage(firstDonorPage);
-                }
+                return data;
+            } catch (e) {
+                console.log(`\nError downloading asset ${i}: ${e.message}`);
+                throw e;
             }
         })
     );
 
-    // Wait for all downloads to complete
-    await Promise.all(downloadTasks);
+    // Process results in order to maintain page order
+    for (let i = 0; i < assets.length; i++) {
+        const asset = assets[i];
+        let data;
+        try {
+            data = await downloadTasks[i];
+        } catch (e) {
+            // Error already logged in the task
+            return;
+        }
+
+        process.stdout.write(`\rProgress ${((i + 1) / assets.length * 100).toFixed(2)}% (${i + 1}/${assets.length})`);
+
+        if (argv.resources) {
+            const filename = path.basename(asset.filename);
+            await fs.promises.writeFile(`${outputname}/${filename}`, data);
+        } else {
+            if (argv.downloadOnly || argv.pdftk) {
+                const filename = path.basename(asset.filename, '.pdf');
+                const filePath = `temp/${filename}.pdf`;
+                await fs.promises.writeFile(filePath, data);
+                filenames.push(filePath);
+            } else {
+                const page = await PDFDocument.load(data);
+                const [firstDonorPage] = await outputPdf.copyPages(page, [0]);
+                outputPdf.addPage(firstDonorPage);
+            }
+        }
+    }
     console.log(); // New line after progress bar
 
     if (argv.resources) {
