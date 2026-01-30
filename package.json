@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -13,6 +14,7 @@
     "md5": "^2.3.0",
     "msgpack-lite": "^0.1.26",
     "node-fetch": "^2.6.1",
+    "p-limit": "^6.1.0",
     "pdf-lib": "^1.16.0",
     "prompt-sync": "^4.2.0",
     "sanitize-filename": "^1.6.3",
