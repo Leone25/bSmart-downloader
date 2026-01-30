@@ -113,14 +113,7 @@ const argv = yargs(hideBin(process.argv))
     let user;
     try {
         const cookieHeaders = { cookie: '_bsw_session_v1_production=' + cookie };
-        const userResponse = await fetch(`https://${baseSite}/api/v5/user`, { headers: cookieHeaders });
-
-        if (userResponse.status != 200) {
-            console.log("Bad cookie");
-            return;
-        }
-
-        user = await userResponse.json();
+        user = await getUserInfo(baseSite, cookieHeaders);
     } catch (error) {
         console.log("Error fetching user info:", error);
         return;
@@ -157,7 +150,7 @@ const argv = yargs(hideBin(process.argv))
     try {
         book = await getBookInfo(baseSite, bookId, headers);
     } catch (error) {
-        console.log(error.message);
+        console.log("Error fetching book info:", error.message);
         return;
     }
 
@@ -171,7 +164,6 @@ const argv = yargs(hideBin(process.argv))
     }
 
     const outputPdf = await PDFDocument.create();
-    const writeAwaiting = [];
     const filenames = [];
     const outputname = argv.output || sanitize(book.id + " - " + book.title);
 
