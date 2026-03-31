@@ -41,6 +41,10 @@ const argv = yargs(hideBin(process.argv))
         type: 'boolean',
         default: false
     })
+    .option('key', {
+        describe: 'Manually provide encryption key as 32 hex bytes',
+        type: 'string',
+    })
     .option('pdftk', {
         describe: 'Downloads the pages as individual pdfs and merges them with pdftk',
         type: 'boolean',
@@ -78,6 +82,15 @@ const argv = yargs(hideBin(process.argv))
     if (argv.downloadOnly && argv.pdftk) {
         console.log("Can't use --download-only and --pdftk at the same time");
         return;
+    }
+
+    if (argv.key) {
+        argv.key = argv.key.replaceAll(" ", "").toLowerCase();
+        if (!(/^([\da-f]{32})$/.test(argv.key))) {
+            console.log("Bad encryption key provided, must be 32 hex characters.");
+            return;
+        }
+        argv.key
     }
 
     if ((argv.downloadOnly || argv.pdftk) && !fs.existsSync('temp')) {
@@ -169,15 +182,18 @@ const argv = yargs(hideBin(process.argv))
 
     let assets = info.map(e => e.assets).flat();
 
-    console.log('Fetching encryption key');
-
-    // Fetch encryption key once and store it
     let encryptionKey;
-    try {
-        encryptionKey = await fetchEncryptionKey();
-    } catch (error) {
-        console.log("Error fetching encryption key:", error);
-        return;
+    if (argv.key) {
+        console.log('Using provided encryption key');
+        encryptionKey = Buffer.from(argv.key, "hex");
+    } else {
+        try {
+            console.log('Fetching encryption key');
+            encryptionKey = await fetchEncryptionKey();
+        } catch (error) {
+            console.log("Error fetching encryption key:", error);
+            return;
+        }
     }
 
     if (argv.resources) {
