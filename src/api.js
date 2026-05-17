@@ -33,7 +33,12 @@ export async function getBooks(baseSite, headers) {
         }
     });
 
-    return books;
+    const seen = new Set();
+    return books.filter(book => {
+        if (seen.has(book.id)) return false;
+        seen.add(book.id);
+        return true;
+    });
 }
 
 /**
